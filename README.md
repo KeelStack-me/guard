@@ -366,4 +366,4 @@ Issues and PRs are welcome. Please open an issue before submitting a large PR.
 
 ## License
 
-MIT © [Siddhant Jain](https://keelstack.me)
+MIT © [Siddhant Jain](https://github.com/siddhant-jain-18)
