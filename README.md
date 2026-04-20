@@ -31,7 +31,7 @@ Zero config. Zero framework coupling. Works with any `async () => T`.
 npm install @keelstack/guard
 ```
 
-**Requirements:** Node.js ≥ 18, TypeScript ≥ 5 (optional but recommended)
+**Requirements:** Node.js ≥ 20, TypeScript ≥ 5 (optional but recommended)
 
 ---
 
