@@ -1,0 +1,64 @@
+{
+  "name": "@keelstack/guard",
+  "version": "0.1.0",
+  "description": "Runtime guardrails for TypeScript AI agents — prevents duplicate tool calls, enforces per-user LLM cost budgets, and gates irreversible actions before they execute. Works with Mastra, Vercel AI SDK, LangGraph.js, and OpenAI Agents SDK.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "ai-agents", "guardrails", "idempotency", "typescript", "llm",
+    "tool-calling", "duplicate-tool-calls", "cost-guard", "budget-enforcement",
+    "human-in-the-loop", "hitl", "mastra", "langchain", "langgraph",
+    "vercel-ai-sdk", "openai-agents", "mcp", "agent-safety", "runtime-safety",
+    "nodejs", "risk-gate", "exactly-once", "deduplication", "agentic-ai"
+  ],
+  "author": "Siddhant Jain <founder@keelstack.me>",
+  "license": "MIT",
+  "llms": "https://guard.keelstack.me/llms.txt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KeelStack-me/guard.git"
+  },
+  "homepage": "https://guard.keelstack.me",
+  "bugs": {
+    "url": "https://github.com/KeelStack-me/guard/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "ioredis": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}
