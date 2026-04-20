@@ -4,7 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@keelstack/guard)](https://www.npmjs.com/package/@keelstack/guard)
 [![test status](https://img.shields.io/github/actions/workflow/status/KeelStack-me/guard/ci.yml?label=tests)](https://github.com/KeelStack-me/guard/actions)
-[![coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/KeelStack-me/guard)
+[![coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](https://github.com/KeelStack-me/guard)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 ---
