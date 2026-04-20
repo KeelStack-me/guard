@@ -47,11 +47,11 @@ export interface BudgetConfig {
    */
   limitUsd: number;
   /**
-   * Optional: thresholds (0–1) at which `onWarn` is called.
-   * Default: [0.5, 0.8] — warns at 50% and 80% of budget.
+    * Optional: thresholds (0–1) at which `onWarn` is evaluated.
+    * Default: [0.5, 0.8].
    */
   warnAt?: number[];
-  /** Called when a warning threshold is crossed. Does not block the action. */
+    /** Called when current usage is greater than or equal to a threshold. */
   onWarn?: (info: BudgetWarnInfo) => void | Promise<void>;
 }
 
@@ -83,7 +83,7 @@ export interface BudgetStore {
 export type RiskLevel = "safe" | "reversible" | "irreversible";
 
 /** What should happen when an action's risk level triggers the policy? */
-export type RiskPolicy = "allow" | "log" | "warn" | "block" | "require-approval";
+export type RiskPolicy = "allow" | "log" | "warn" | "block";
 
 export interface RiskConfig {
   level: RiskLevel;
@@ -97,7 +97,28 @@ export interface RiskInfo {
   level: RiskLevel;
   policy: RiskPolicy;
   blocked: boolean;
-  approvalToken?: string;
+}
+
+// ─── Failure handling ────────────────────────────────────────────────────────
+
+/** Behavior when the protected action throws. */
+export type FailurePolicy = "retry" | "compensate";
+
+export interface FailureInfo {
+  key: string;
+  error: unknown;
+  policy: FailurePolicy;
+}
+
+export interface FailureConfig {
+  /**
+   * Default: "retry"
+   * - retry: rethrow and allow future attempts with the same key
+   * - compensate: call onError before rethrowing
+   */
+  policy?: FailurePolicy;
+  /** Optional compensation hook for side-effecting actions. */
+  onError?: (info: FailureInfo) => void | Promise<void>;
 }
 
 // ─── Cost extraction ──────────────────────────────────────────────────────────
@@ -144,6 +165,9 @@ export interface GuardOptions<T = unknown> {
 
   /** Optional: risk classification and policy for this action. */
   risk?: RiskConfig;
+
+  /** Optional: behavior when the protected action throws. */
+  failure?: FailureConfig;
 
   /**
    * Optional: custom ledger backend.

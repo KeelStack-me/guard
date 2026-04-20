@@ -91,6 +91,34 @@ describe("guard() — idempotency", () => {
       guard({ key: "bad", action: "not-a-fn", ledger, budgetStore })
     ).rejects.toThrow(TypeError);
   });
+
+  it("prevents concurrent same-key double execution", async () => {
+    const { ledger, budgetStore } = freshDeps();
+
+    let resolveAction: ((value: string) => void) | undefined;
+    const action = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveAction = resolve;
+        })
+    );
+
+    const firstPromise = guard({ key: "k-concurrent", action, ledger, budgetStore });
+    const secondPromise = guard({ key: "k-concurrent", action, ledger, budgetStore });
+
+    // Let both requests reach the in-flight join path before resolving.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    resolveAction?.("ok");
+
+    const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+    expect(action).toHaveBeenCalledOnce();
+    expect(first.status).toBe("executed");
+    expect(second.status).toBe("replayed");
+    expect(second.fromCache).toBe(true);
+  });
 });
 
 describe("guard() — budget enforcement", () => {
@@ -322,5 +350,40 @@ describe("guard() — combined primitives", () => {
     // Budget is checked first — should be blocked by budget, not risk
     expect(result.status).toBe("blocked:budget");
     expect(action).not.toHaveBeenCalled();
+  });
+
+  it("failure policy retry rethrows and allows future retries", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const action = vi.fn().mockRejectedValue(new Error("boom"));
+
+    await expect(
+      guard({ key: "fail-retry", action, ledger, budgetStore })
+    ).rejects.toThrow("boom");
+
+    await expect(
+      guard({ key: "fail-retry", action, ledger, budgetStore })
+    ).rejects.toThrow("boom");
+
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("failure policy compensate invokes onError before rethrow", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const action = vi.fn().mockRejectedValue(new Error("boom"));
+    const onError = vi.fn();
+
+    await expect(
+      guard({
+        key: "fail-compensate",
+        action,
+        ledger,
+        budgetStore,
+        failure: { policy: "compensate", onError },
+      })
+    ).rejects.toThrow("boom");
+
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError.mock.calls[0]?.[0].key).toBe("fail-compensate");
+    expect(onError.mock.calls[0]?.[0].policy).toBe("compensate");
   });
 });

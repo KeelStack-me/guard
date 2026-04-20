@@ -1,8 +1,8 @@
 /**
  * @keelstack/guard
  *
- * Guardrails that stop repeated AI tool calls from causing
- * duplicate actions and runaway costs.
+ * Guardrails that reduce duplicate AI tool side effects
+ * and runaway costs.
  *
  * @example
  * import { guard } from '@keelstack/guard';
@@ -36,4 +36,8 @@ export type {
   RiskPolicy,
   RiskConfig,
   RiskInfo,
+  // Failure
+  FailurePolicy,
+  FailureConfig,
+  FailureInfo,
 } from "./types.js";

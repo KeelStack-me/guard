@@ -1,6 +1,6 @@
 # @keelstack/guard
 
-**Guardrails that stop repeated AI tool calls from causing duplicate actions and runaway costs.**
+**Guardrails that reduce duplicate AI tool side effects and runaway costs.**
 
 [![npm version](https://img.shields.io/npm/v/@keelstack/guard)](https://www.npmjs.com/package/@keelstack/guard)
 [![test status](https://img.shields.io/github/actions/workflow/status/KeelStack-me/guard/ci.yml?label=tests)](https://github.com/KeelStack-me/guard/actions)
@@ -13,13 +13,13 @@
 
 Your AI agent retries a tool call. The email sends twice. The charge fires twice. The record duplicates.
 
-Every agent framework — LangGraph, Vercel AI SDK, Mastra, OpenAI Agents SDK — retries failed or timed-out tool calls. None of them prevent the duplicate side effects those retries cause.
+Many agent frameworks — LangGraph, Vercel AI SDK, Mastra, OpenAI Agents SDK — retry failed or timed-out tool calls. `@keelstack/guard` adds application-level protections around those retries.
 
 `@keelstack/guard` wraps any tool call with three primitives:
 
-1. **Idempotency gate** — the action runs at most once per key, even across retries
+1. **Idempotency gate** — repeated calls with the same key can replay the stored result instead of re-running the action
 2. **Budget enforcer** — blocks the action if per-user spend is exceeded
-3. **Risk gate** — logs, warns, or blocks based on action risk level
+3. **Risk gate** — emits risk metadata and can warn or block based on action risk level
 
 Zero config. Zero framework coupling. Works with any `async () => T`.
 
@@ -97,7 +97,7 @@ if (result.status === 'blocked:budget') {
 
 ---
 
-### 3. Risk gate — log, warn, or block irreversible actions
+### 3. Risk gate — classify, warn, or block irreversible actions
 
 ```typescript
 const result = await guard({
@@ -116,6 +116,8 @@ if (result.status === 'blocked:risk') {
   return Response.json({ error: 'Action blocked by risk policy' }, { status: 403 });
 }
 ```
+
+`policy: 'log'` is metadata only; use `onRisk` to write actual audit logs.
 
 ---
 
@@ -202,6 +204,7 @@ async function guard<T>(options: GuardOptions<T>): Promise<GuardResult<T>>
 | `budget` | `BudgetConfig` | — | Per-user spend limit. See below. |
 | `extractCost` | `(result: T) => number` | — | Extract USD cost from result. Required for budget tracking. |
 | `risk` | `RiskConfig` | — | Action risk classification and policy. |
+| `failure` | `FailureConfig` | — | Behavior when the action throws (`retry` or `compensate`). |
 | `ledger` | `Ledger` | — | Custom storage backend. Default: in-memory. |
 | `budgetStore` | `BudgetStore` | — | Custom budget store. Default: in-memory. |
 
@@ -224,7 +227,7 @@ async function guard<T>(options: GuardOptions<T>): Promise<GuardResult<T>>
 {
   id: string;          // budget owner (userId, agentId, tenantId)
   limitUsd: number;    // max spend per window
-  warnAt?: number[];   // thresholds 0–1 to trigger onWarn. Default: [0.5, 0.8]
+  warnAt?: number[];   // thresholds 0–1; onWarn runs whenever usage is >= threshold
   onWarn?: (info: BudgetWarnInfo) => void | Promise<void>;
 }
 ```
@@ -241,13 +244,25 @@ async function guard<T>(options: GuardOptions<T>): Promise<GuardResult<T>>
 
 Default policies by level: `safe → allow`, `reversible → log`, `irreversible → warn`.
 
+#### FailureConfig
+
+```typescript
+{
+  policy?: 'retry' | 'compensate'; // default: retry
+  onError?: (info: FailureInfo) => void | Promise<void>;
+}
+```
+
+- `retry`: rethrow and allow future attempts with the same key.
+- `compensate`: call `onError` before rethrowing.
+
 ---
 
 ## Storage backends
 
 ### Default: in-memory
 
-Works immediately. No config. Resets when the process restarts.
+Works immediately. No config. Process-local state; resets when the process restarts.
 
 ```typescript
 import { guard, MemoryLedger } from '@keelstack/guard';
@@ -297,6 +312,17 @@ A first-party `@keelstack/guard-redis` adapter is coming. [Star the repo](https:
 
 ---
 
+## Current behavior and limits
+
+- With the default in-memory ledger, deduplication is process-local.
+- Cross-instance deduplication requires a shared ledger backend (for example Redis).
+- Simultaneous same-key calls are lock-joined within a single process.
+- Cross-process race safety still depends on your shared ledger implementation.
+- `policy: 'warn'` emits `console.warn`; `policy: 'log'` does not log by itself unless you implement logging in `onRisk`.
+- Failed actions are rethrown and are not cached by default (`failure.policy: 'retry'`).
+
+---
+
 ## Key construction guide
 
 A good idempotency key is **stable**, **unique per logical operation**, and **scoped to the right boundary**:
@@ -324,7 +350,7 @@ key: `send-email`
 import { guard, MemoryLedger, MemoryBudgetStore } from '@keelstack/guard';
 
 describe('my tool', () => {
-  it('sends email exactly once on retry', async () => {
+  it('replays on retry with same key', async () => {
     // Use isolated deps so tests don't share state
     const ledger = new MemoryLedger();
     const budgetStore = new MemoryBudgetStore();
@@ -349,7 +375,7 @@ describe('my tool', () => {
 
 - [x] Idempotency gate (in-memory)
 - [x] Budget enforcer (in-memory)
-- [x] Risk gate with HITL webhook
+- [x] Risk gate with policy + callback hooks
 - [ ] `@keelstack/guard-redis` — first-party Redis ledger adapter
 - [ ] Hosted dashboard — visualise blocked duplicates and budget usage per user
 - [ ] OpenTelemetry spans emitted per guard call

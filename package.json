@@ -49,7 +49,6 @@
     "runtime-safety",
     "nodejs",
     "risk-gate",
-    "exactly-once",
     "deduplication",
     "agentic-ai"
   ],
