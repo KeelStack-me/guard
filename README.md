@@ -2,6 +2,8 @@
 
 **Guardrails that reduce duplicate AI tool side effects and runaway costs.**
 
+[Homepage](https://guard.keelstack.me/) | [GitHub](https://github.com/KeelStack-me/guard)
+
 [![npm version](https://img.shields.io/npm/v/@keelstack/guard)](https://www.npmjs.com/package/@keelstack/guard)
 [![test status](https://img.shields.io/github/actions/workflow/status/KeelStack-me/guard/ci.yml?label=tests)](https://github.com/KeelStack-me/guard/actions)
 [![coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](https://github.com/KeelStack-me/guard)
@@ -380,7 +382,7 @@ describe('my tool', () => {
 - [ ] Hosted dashboard — visualise blocked duplicates and budget usage per user
 - [ ] OpenTelemetry spans emitted per guard call
 
-[Follow the build →](https://github.com/KeelStack-me/guard)
+[Visit the homepage →](https://guard.keelstack.me/)
 
 ---
 

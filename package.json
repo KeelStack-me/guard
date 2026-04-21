@@ -58,7 +58,7 @@
     "type": "git",
     "url": "git+https://github.com/KeelStack-me/guard.git"
   },
-  "homepage": "https://github.com/KeelStack-me/guard.git",
+  "homepage": "https://guard.keelstack.me/",
   "bugs": {
     "url": "https://github.com/KeelStack-me/guard/issues"
   },
