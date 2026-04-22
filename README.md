@@ -386,6 +386,10 @@ describe('my tool', () => {
 
 ---
 
+**If this saved you time, please give it a ⭐️ on GitHub!**
+
+---
+
 ## Contributing
 
 Issues and PRs are welcome. Please open an issue before submitting a large PR.
