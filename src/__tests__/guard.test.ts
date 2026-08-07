@@ -96,19 +96,25 @@ describe("guard() — idempotency", () => {
     const { ledger, budgetStore } = freshDeps();
 
     let resolveAction: ((value: string) => void) | undefined;
+    let actionStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      actionStarted = resolve;
+    });
     const action = vi.fn(
       () =>
         new Promise<string>((resolve) => {
           resolveAction = resolve;
+          actionStarted?.();
         })
     );
 
     const firstPromise = guard({ key: "k-concurrent", action, ledger, budgetStore });
     const secondPromise = guard({ key: "k-concurrent", action, ledger, budgetStore });
 
-    // Let both requests reach the in-flight join path before resolving.
-    await Promise.resolve();
-    await Promise.resolve();
+    // Wait until the first request has entered the action. This is more
+    // reliable across Node versions than assuming a fixed number of
+    // microtask turns for WebCrypto intent fingerprinting.
+    await started;
 
     resolveAction?.("ok");
 
