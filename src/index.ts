@@ -1,27 +1,23 @@
 /**
  * @keelstack/guard
  *
- * Guardrails that reduce duplicate AI tool side effects
- * and runaway costs.
- *
- * @example
- * import { guard } from '@keelstack/guard';
- *
- * const result = await guard({
- *   key: `send-email:${userId}:${taskId}`,
- *   action: () => resend.emails.send({ ... }),
- * });
+ * A framework-agnostic action firewall for AI agents.
  */
 
 export { guard } from "./guard.js";
+export { canonicalizeIntent, fingerprintIntent } from "./intent.js";
 export { MemoryLedger, defaultLedger } from "./ledger.js";
 export { MemoryBudgetStore, defaultBudgetStore } from "./budget-store.js";
+export { MemoryAuthorityStore, defaultAuthorityStore } from "./authority-store.js";
 
 export type {
   // Core
   GuardOptions,
   GuardResult,
   GuardResultStatus,
+  ActionMetadata,
+  Primitive,
+  DecisionReceipt,
   // Ledger
   Ledger,
   LedgerEntry,
@@ -36,6 +32,18 @@ export type {
   RiskPolicy,
   RiskConfig,
   RiskInfo,
+  // Approval
+  ApprovalConfig,
+  ApprovalContext,
+  ApprovalDecision,
+  ApprovalInfo,
+  // Authority
+  AuthorityConfig,
+  AuthorityState,
+  AuthorityRequest,
+  AuthorityDecision,
+  AuthorityStore,
+  AuthorityInfo,
   // Failure
   FailurePolicy,
   FailureConfig,

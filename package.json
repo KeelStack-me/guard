@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@keelstack/guard",
   "version": "0.2.0",
-  "description": "Runtime guardrails for TypeScript AI agents — prevents duplicate tool calls, enforces per-user LLM cost budgets, and gates irreversible actions before they execute. Works with Mastra, Vercel AI SDK, LangGraph.js, and OpenAI Agents SDK.",
+  "description": "Framework-agnostic action firewall for AI agents \u2014 intent-bound idempotency, approvals, scoped authority, budget pre-authorization, and audit receipts.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,7 +22,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "assets"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",
@@ -55,7 +56,13 @@
     "nodejs",
     "risk-gate",
     "deduplication",
-    "agentic-ai"
+    "agentic-ai",
+    "agent-authorization",
+    "action-firewall",
+    "least-privilege",
+    "circuit-breaker",
+    "approval-workflow",
+    "audit-log"
   ],
   "author": "Siddhant Jain <founder@keelstack.me>",
   "license": "MIT",
