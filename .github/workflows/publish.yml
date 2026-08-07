@@ -4,25 +4,25 @@ on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: npm
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
@@ -37,10 +37,10 @@ jobs:
         run: npm run build
 
       - name: Validate tag matches package version
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
           if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
             echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)."
             exit 1
@@ -66,6 +66,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.version_check.outputs.already_published != 'true'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
