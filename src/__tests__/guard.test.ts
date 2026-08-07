@@ -121,9 +121,10 @@ describe("guard() — idempotency", () => {
     const [first, second] = await Promise.all([firstPromise, secondPromise]);
 
     expect(action).toHaveBeenCalledOnce();
-    expect(first.status).toBe("executed");
-    expect(second.status).toBe("replayed");
-    expect(second.fromCache).toBe(true);
+    // WebCrypto fingerprinting is asynchronous, so either caller may reach
+    // the ledger first. Exactly one executes and the other replays.
+    expect([first.status, second.status].sort()).toEqual(["executed", "replayed"]);
+    expect([first.fromCache, second.fromCache].filter(Boolean)).toHaveLength(1);
   });
 });
 
@@ -391,5 +392,99 @@ describe("guard() — combined primitives", () => {
     expect(onError).toHaveBeenCalledOnce();
     expect(onError.mock.calls[0]?.[0].key).toBe("fail-compensate");
     expect(onError.mock.calls[0]?.[0].policy).toBe("compensate");
+  });
+});
+
+describe("guard() — approvals, authority, and validation", () => {
+  it("rejects a reused key when its intent differs", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    await guard({ key: "intent-conflict", intent: { tool: "email", to: "a" }, action: async () => "ok", ledger, budgetStore });
+
+    const result = await guard({ key: "intent-conflict", intent: { tool: "email", to: "b" }, action: async () => "no", ledger, budgetStore });
+
+    expect(result.status).toBe("blocked:intent-conflict");
+    expect(result.intentConflict?.key).toBe("intent-conflict");
+  });
+
+  it("returns pending approval with an auditable decision receipt", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const onDecision = vi.fn();
+    const result = await guard({
+      key: "approval-pending", intent: { operation: "transfer" }, action: async () => "no",
+      approval: { required: true }, metadata: { source: "test" }, onDecision, ledger, budgetStore,
+    });
+
+    expect(result.status).toBe("pending:approval");
+    expect(result.approvalInfo?.status).toBe("pending");
+    expect(onDecision).toHaveBeenCalledOnce();
+    expect(result.receipt.metadata).toEqual({ source: "test" });
+  });
+
+  it("blocks denied and mismatched approvals", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const { fingerprintIntent } = await import("../intent.js");
+    const denied = await guard({
+      key: "approval-denied", action: async () => "no", approval: { required: true, decision: { intentHash: await fingerprintIntent({ key: "approval-denied" }), status: "denied", by: "reviewer", reason: "unsafe" } }, ledger, budgetStore,
+    });
+    const mismatch = await guard({
+      key: "approval-mismatch", action: async () => "no", approval: { required: true, decision: { intentHash: "wrong", status: "approved", by: "reviewer" } }, ledger, budgetStore,
+    });
+
+    expect(denied.approvalInfo?.status).toBe("denied");
+    expect(denied.receipt.reason).toBe("unsafe");
+    expect(mismatch.status).toBe("blocked:approval");
+    expect(mismatch.approvalInfo?.status).toBe("mismatch");
+  });
+
+  it("executes approved actions and enforces authority execution limits", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const intent = { operation: "publish" };
+    const { fingerprintIntent } = await import("../intent.js");
+    const intentHash = await fingerprintIntent(intent);
+    const authority = { id: "publisher", maxExecutions: 1 };
+    const first = await guard({ key: "authority-one", intent, action: async () => "ok", approval: { required: () => true, decision: { intentHash, status: "approved", by: "admin" } }, authority, ledger, budgetStore });
+    const second = await guard({ key: "authority-two", action: async () => "no", authority, ledger, budgetStore });
+
+    expect(first.approvalInfo?.status).toBe("approved");
+    expect(first.authorityInfo?.allowed).toBe(true);
+    expect(second.status).toBe("blocked:authority");
+    expect(second.authorityInfo?.reason).toBe("max-executions");
+  });
+
+  it("uses estimates for preflight, recording, and concurrent budget protection", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const first = await guard({ key: "estimate-record", action: async () => "ok", budget: { id: "estimated", limitUsd: 2, estimatedCostUsd: 1 }, ledger, budgetStore });
+    const blocked = await guard({ key: "estimate-block", action: async () => "no", budget: { id: "estimated", limitUsd: 2, estimatedCostUsd: 1.1 }, ledger, budgetStore });
+
+    expect(first.status).toBe("executed");
+    expect((await budgetStore.get("estimated"))?.currentSpend).toBe(1);
+    expect(blocked.status).toBe("blocked:budget");
+    expect(blocked.budgetInfo?.projectedSpend).toBe(2.1);
+  });
+
+  it("enforces authority value limits and includes projected budget warnings", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const onWarn = vi.fn();
+    const budget = { id: "warning-estimate", limitUsd: 10, estimatedCostUsd: 6, warnAt: [0.5], onWarn };
+    const executed = await guard({ key: "warning-estimate", action: async () => "ok", budget, ledger, budgetStore });
+    const blocked = await guard({
+      key: "authority-value", action: async () => "no",
+      authority: { id: "value-limited", maxValueUsd: 1, valueUsd: 1.1 }, ledger, budgetStore,
+    });
+
+    expect(executed.status).toBe("executed");
+    expect(onWarn).toHaveBeenCalledWith(expect.objectContaining({ projectedSpend: 6 }));
+    expect(blocked.status).toBe("blocked:authority");
+    expect(blocked.authorityInfo).toMatchObject({ reason: "max-value-usd", valueUsd: 1.1, maxValueUsd: 1 });
+  });
+
+  it("validates TTL, budget, and authority configuration", async () => {
+    const { ledger, budgetStore } = freshDeps();
+    const base = { key: "invalid", action: async () => "ok", ledger, budgetStore };
+
+    await expect(guard({ ...base, ttlMs: -1 })).rejects.toThrow("ttlMs");
+    await expect(guard({ ...base, key: "invalid-budget", budget: { id: "b", limitUsd: 0 } })).rejects.toThrow("limitUsd");
+    await expect(guard({ ...base, key: "invalid-authority", authority: { id: "", maxExecutions: 1 } })).rejects.toThrow("authority.id");
+    await expect(guard({ ...base, key: "invalid-window", authority: { id: "a", windowMs: 0 } })).rejects.toThrow("windowMs");
   });
 });
