@@ -19,7 +19,7 @@
 [![coverage](https://img.shields.io/badge/coverage-98%25-3ddc84?style=flat-square)](https://github.com/KeelStack-me/guard)
 [![zero deps](https://img.shields.io/badge/dependencies-0-3ddc84?style=flat-square)](https://www.npmjs.com/package/@keelstack/guard)
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%E2%89%A520-lightgrey?style=flat-square)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/node-%E2%89%A522-lightgrey?style=flat-square)](https://nodejs.org)
 
 <br/>
 
@@ -53,7 +53,7 @@ Zero config. Zero framework coupling. Zero runtime dependencies.
 npm install @keelstack/guard
 ```
 
-> **Requirements:** Node.js ≥ 20 · TypeScript ≥ 5 (optional but recommended)
+> **Requirements:** Node.js ≥ 22 · TypeScript ≥ 6 (optional but recommended)
 
 ---
 
@@ -465,10 +465,10 @@ The gap: **framework-agnostic, TypeScript-native, wraps any `async () => T` with
 | Function coverage | 94.44% |
 | Runtime dependencies | **0** |
 | Packed size | **15.3 KB** |
-| Node.js | ≥ 20 |
-| TypeScript | ≥ 5 |
+| Node.js | ≥ 22 |
+| TypeScript | ≥ 6 |
 | Framework examples included | Vercel AI SDK, LangGraph.js, Mastra, OpenAI Agents SDK |
-| CI matrix | Node 20, 22 |
+| CI matrix | Node 22, 24 |
 
 CI runs typecheck → test → coverage → build on every push. Publishes to npm on `v*.*.*` tags.
 
@@ -491,7 +491,7 @@ CI runs typecheck → test → coverage → build on every push. Publishes to np
 - [x] Budget enforcer with in-memory store
 - [x] Risk gate with policy + callback hooks
 - [x] Full TypeScript types shipped
-- [x] 98% test coverage, Node 20/22 CI
+- [x] 98% test coverage, Node 22/24 CI
 - [ ] `@keelstack/guard-redis` — first-party Redis ledger adapter
 - [ ] Hosted dashboard — visualise blocked duplicates and budget usage per user
 - [ ] OpenTelemetry spans per guard call
