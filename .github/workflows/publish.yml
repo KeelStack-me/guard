@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,11 +19,16 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
+
+      - name: Show environment
+        run: |
+          node --version
+          npm --version
+          npm config get registry
 
       - name: Install dependencies
         run: npm ci
@@ -37,6 +43,7 @@ jobs:
         run: npm run build
 
       - name: Validate tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
@@ -51,19 +58,15 @@ jobs:
         run: |
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          PUBLISHED_VERSION="$(npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null || true)"
 
-          if [ "$PUBLISHED_VERSION" = "$PACKAGE_VERSION" ]; then
-            echo "Version $PACKAGE_VERSION already exists on npm. Skipping publish."
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE_NAME@$PACKAGE_VERSION already exists on npm."
             echo "already_published=true" >> "$GITHUB_OUTPUT"
           else
+            echo "$PACKAGE_NAME@$PACKAGE_VERSION is not published yet."
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: No publish needed
-        if: steps.version_check.outputs.already_published == 'true'
-        run: echo "This version is already on npm; publish step is intentionally skipped."
-
-      - name: Publish to npm
+      - name: Publish to npm using OIDC
         if: steps.version_check.outputs.already_published != 'true'
         run: npm publish --access public
